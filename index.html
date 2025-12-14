@@ -4,13 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Pointage</title>
+
 <style>
 body {
   margin: 0;
   padding: 10px;
   font-family: system-ui, -apple-system, Arial, sans-serif;
   background: #b3b3b3;
-  color: #000;
 }
 
 h1 {
@@ -21,58 +21,45 @@ h1 {
 
 .controls {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
+  flex-wrap: nowrap;
   gap: 6px;
-  margin-bottom: 6px;
+  margin-bottom: 10px;
 }
 
-.controls select, .controls input[type=number] {
-  padding: 6px;
-  font-size: 16px;
-  height: 38px;
+.controls select {
   flex: 1;
-  min-width: 90px;
-  box-sizing: border-box;
+  height: 38px;
+  font-size: 16px;
+}
+
+#winScore {
+  width: 5.5ch;
+  height: 38px;
+  font-size: 16px;
+  text-align: center;
 }
 
 .player {
   display: grid;
-  grid-template-columns: 7ch 7ch 7ch; /* nom - score - total */
-  gap: 4px; /* espace entre les colonnes */
-  margin-bottom: 4px;
+  grid-template-columns: 9ch 6ch 6ch;
+  gap: 8px;
+  margin-bottom: 6px;
   align-items: center;
 }
 
 input {
-  padding: 4px;
-  font-size: 16px;
-  box-sizing: border-box;
   height: 38px;
-}
-
-.name {
-  width: 7ch;
-  color: #000;
-}
-
-.round {
-  width: 7ch;  /* maintenant assez large pour 4 chiffres */
-  text-align: center;
-}
-
-input::placeholder {
-  color: #555;
-  font-style: normal;
+  font-size: 16px;
+  padding: 4px;
+  box-sizing: border-box;
 }
 
 .total {
-  width: 7ch;  /* maintenant assez large pour 4 chiffres */
   background: #e0e0e0;
   border-radius: 6px;
+  font-weight: bold;
   text-align: center;
   line-height: 38px;
-  font-weight: bold;
 }
 
 .leader {
@@ -81,55 +68,43 @@ input::placeholder {
 }
 
 button {
-  padding: 8px;
+  height: 40px;
   font-size: 16px;
-  margin-top: 4px;
-  height: 38px;
-  cursor: pointer;
-  border: none;
+  margin-top: 6px;
   border-radius: 6px;
+  border: none;
   width: 100%;
 }
 
 #addRoundBtn {
   background: #4a4a4a;
-  color: #fff;
-  font-weight: bold;
+  color: white;
 }
 
 #undoBtn, #resetBtn {
   background: #888;
-  color: #fff;
+  color: white;
 }
 
 .history {
   background: #e0e0e0;
-  margin-top: 6px;
+  margin-top: 8px;
   padding: 6px;
   max-height: 150px;
   overflow-y: auto;
   font-size: 13px;
   border-radius: 6px;
 }
-
-@media (max-width: 500px) {
-  .player {
-    grid-template-columns: 6ch 6ch 6ch;
-  }
-  .controls {
-    flex-direction: column;
-  }
-}
 </style>
 </head>
+
 <body>
 
 <h1>Pointage</h1>
 
 <div class="controls">
   <select id="count" onchange="setPlayers(this.value)">
-    <option value="1">1 joueur</option>
-    <option value="2" selected>2 joueurs</option>
+    <option value="2">2 joueurs</option>
     <option value="3">3 joueurs</option>
     <option value="4">4 joueurs</option>
     <option value="5">5 joueurs</option>
@@ -140,14 +115,14 @@ button {
     <option value="10">10 joueurs</option>
   </select>
 
-  <input type="number" id="winScore" value="200" min="1" onchange="setWinScore(this.value)" title="Score pour gagner">
+  <input type="number" id="winScore" value="200" min="1">
 </div>
 
 <div id="players"></div>
 
-<button id="addRoundBtn" onclick="addRound()">Nouvelle manche</button>
-<button id="undoBtn" onclick="undo()">Annuler dernière manche</button>
-<button id="resetBtn" onclick="reset()">Rejouer</button>
+<button id="addRoundBtn" onclick="addRound()">Enregistrer le pointage</button>
+<button id="undoBtn" onclick="undo()">Annuler l’enregistrement</button>
+<button id="resetBtn" onclick="reset()">Nouvelle partie</button>
 
 <div class="history" id="history"></div>
 
@@ -159,97 +134,53 @@ let locked = false;
 let players = Array.from({length:10}, () => ({ name:"", total:0 }));
 let history = [];
 
-const saved = JSON.parse(localStorage.getItem("pointage"));
-if (saved) {
-  players = saved.players;
-  history = saved.history;
-  count = saved.count;
-  WIN = saved.WIN || 200;
-  locked = saved.locked;
-  document.getElementById("count").value = count;
-  document.getElementById("winScore").value = WIN;
-}
+function setPlayers(n){ if(!locked){ count=+n; render(); } }
+document.getElementById("winScore").onchange=e=>WIN=+e.target.value||200;
 
-function setPlayers(n) {
-  if (locked) return;
-  count = Number(n);
-  save();
-  render();
-}
+function render(){
+  const div=document.getElementById("players");
+  div.innerHTML="";
+  const max=Math.max(...players.slice(0,count).map(p=>p.total));
 
-function setWinScore(v) {
-  if (locked) return;
-  WIN = Number(v) || 200;
-  save();
-}
-
-function render() {
-  const div = document.getElementById("players");
-  div.innerHTML = "";
-
-  const maxScore = Math.max(...players.slice(0, count).map(p => p.total));
-
-  for (let i = 0; i < count; i++) {
-    const p = players[i];
-    const leaderClass = (p.total === maxScore && maxScore > 0) ? "leader" : "";
-
-    div.innerHTML += `
-      <div class="player">
-        <input class="name" placeholder="J${i+1}" value="${p.name}" ${locked ? "disabled":""} onchange="rename(${i},this.value)">
-        <input class="round" type="number" id="r${i}" placeholder="0">
-        <div class="total ${leaderClass}">${p.total}</div>
-      </div>`;
+  for(let i=0;i<count;i++){
+    const p=players[i];
+    div.innerHTML+=`
+    <div class="player">
+      <input placeholder="J${i+1}" value="${p.name}" onchange="players[${i}].name=this.value">
+      <input type="number" id="r${i}">
+      <div class="total ${p.total===max&&max>0?'leader':''}">${p.total}</div>
+    </div>`;
   }
-
-  const h = document.getElementById("history");
-  h.innerHTML = "<b>Historique</b><br>";
-  history.forEach((x,i)=>h.innerHTML+=`${i+1}. ${x}<br>`);
 }
 
-function rename(i,v){ players[i].name=v; save(); }
-
-function addRound() {
-  locked = true;
-  let line = [];
-
-  for (let i = 0; i < count; i++) {
-    let v = Number(document.getElementById("r"+i).value) || 0;
-    players[i].total += v;
+function addRound(){
+  locked=true;
+  let line=[];
+  for(let i=0;i<count;i++){
+    const v=+document.getElementById("r"+i).value||0;
+    players[i].total+=v;
     line.push(v);
-    document.getElementById("r"+i).value = "";
-
-    if (players[i].total >= WIN) {
-      setTimeout(() => {
-        alert(`🏆 ${players[i].name || "Joueur "+(i+1)} gagne avec ${players[i].total} points`);
-      }, 100);
-    }
+    document.getElementById("r"+i).value="";
+    if(players[i].total>=WIN)
+      alert(`🏆 ${players[i].name||'Joueur '+(i+1)} gagne`);
   }
-
-  history.push("Manche : " + line.join(", "));
-  save();
+  history.push(line.join(", "));
   render();
 }
 
-function undo() {
-  const last = history.pop();
-  if (!last) return;
-  const vals = last.split(":")[1].split(",").map(Number);
-  vals.forEach((v,i)=>players[i].total -= v);
-  save();
+function undo(){
+  const last=history.pop();
+  if(!last) return;
+  last.split(",").forEach((v,i)=>players[i].total-=+v);
   render();
 }
 
-function reset() {
-  if (!confirm("Rejouer ?")) return;
+function reset(){
+  if(!confirm("Nouvelle partie ?"))return;
   players.forEach(p=>p.total=0);
   history=[];
   locked=false;
-  save();
   render();
-}
-
-function save() {
-  localStorage.setItem("pointage", JSON.stringify({players,history,count,WIN,locked}));
 }
 
 render();
