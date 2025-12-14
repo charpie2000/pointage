@@ -104,7 +104,7 @@ button {
 
 <div class="controls">
   <select id="count" onchange="setPlayers(this.value)">
-    <option value="2">2 joueurs</option>
+    <option value="2" selected>2 joueurs</option>
     <option value="3">3 joueurs</option>
     <option value="4">4 joueurs</option>
     <option value="5">5 joueurs</option>
@@ -131,55 +131,97 @@ let WIN = 200;
 let count = 2;
 let locked = false;
 
-let players = Array.from({length:10}, () => ({ name:"", total:0 }));
+let players = Array.from({ length: 10 }, () => ({ name: "", total: 0 }));
 let history = [];
 
-function setPlayers(n){ if(!locked){ count=+n; render(); } }
-document.getElementById("winScore").onchange=e=>WIN=+e.target.value||200;
+document.getElementById("winScore").onchange = e => {
+  WIN = Number(e.target.value) || 200;
+};
 
-function render(){
-  const div=document.getElementById("players");
-  div.innerHTML="";
-  const max=Math.max(...players.slice(0,count).map(p=>p.total));
-
-  for(let i=0;i<count;i++){
-    const p=players[i];
-    div.innerHTML+=`
-    <div class="player">
-      <input placeholder="J${i+1}" value="${p.name}" onchange="players[${i}].name=this.value">
-      <input type="number" id="r${i}">
-      <div class="total ${p.total===max&&max>0?'leader':''}">${p.total}</div>
-    </div>`;
+function setPlayers(n) {
+  if (!locked) {
+    count = Number(n);
+    render();
   }
 }
 
-function addRound(){
-  locked=true;
-  let line=[];
-  for(let i=0;i<count;i++){
-    const v=+document.getElementById("r"+i).value||0;
-    players[i].total+=v;
+function render() {
+  const div = document.getElementById("players");
+  div.innerHTML = "";
+
+  const max = Math.max(...players.slice(0, count).map(p => p.total));
+
+  for (let i = 0; i < count; i++) {
+    const p = players[i];
+    div.innerHTML += `
+      <div class="player">
+        <input placeholder="J${i + 1}" value="${p.name}" 
+               onchange="players[${i}].name=this.value">
+        <input type="number" id="r${i}">
+        <div class="total ${p.total === max && max > 0 ? 'leader' : ''}">
+          ${p.total}
+        </div>
+      </div>
+    `;
+  }
+
+  renderHistory();
+}
+
+function renderHistory() {
+  const h = document.getElementById("history");
+  h.innerHTML = "<b>Historique des manches</b><br>";
+  history.forEach((line, i) => {
+    h.innerHTML += `${i + 1}. ${line}<br>`;
+  });
+}
+
+function addRound() {
+  locked = true;
+  let line = [];
+  let winner = null;
+
+  for (let i = 0; i < count; i++) {
+    const input = document.getElementById("r" + i);
+    const v = Number(input.value) || 0;
+    players[i].total += v;
     line.push(v);
-    document.getElementById("r"+i).value="";
-    if(players[i].total>=WIN)
-      alert(`🏆 ${players[i].name||'Joueur '+(i+1)} gagne`);
+    input.value = "";
   }
-  history.push(line.join(", "));
+
+  history.push("Manche : " + line.join(", "));
+  renderHistory();
+
+  players.slice(0, count).forEach((p, i) => {
+    if (!winner && p.total >= WIN) {
+      winner = `${p.name || "Joueur " + (i + 1)} gagne avec ${p.total} points`;
+    }
+  });
+
+  render();
+
+  if (winner) {
+    setTimeout(() => alert("🏆 " + winner), 100);
+  }
+}
+
+function undo() {
+  const last = history.pop();
+  if (!last) return;
+
+  const values = last.split(":")[1].split(",").map(Number);
+  values.forEach((v, i) => players[i].total -= v);
+
   render();
 }
 
-function undo(){
-  const last=history.pop();
-  if(!last) return;
-  last.split(",").forEach((v,i)=>players[i].total-=+v);
-  render();
-}
+function reset() {
+  if (!confirm("Nouvelle partie ?")) return;
 
-function reset(){
-  if(!confirm("Nouvelle partie ?"))return;
-  players.forEach(p=>p.total=0);
-  history=[];
-  locked=false;
+  players.forEach(p => p.total = 0);
+  history = [];
+  locked = false;
+
   render();
 }
 
