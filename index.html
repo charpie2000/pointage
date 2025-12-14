@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Pointage</title>
-
 <style>
 body {
   margin: 0;
@@ -16,42 +15,63 @@ body {
 
 h1 {
   text-align: center;
+  margin-bottom: 8px;
+  font-size: 1.5em;
 }
 
 .controls {
   display: flex;
-  gap: 6px;
-  margin-bottom: 8px;
-}
-
-select, input[type=number] {
-  padding: 10px;
-  font-size: 16px;
-  flex: 1;
-}
-
-.player {
-  display: grid;
-  grid-template-columns: 2fr 1fr 1fr;
+  flex-wrap: wrap;
+  justify-content: space-between;
   gap: 6px;
   margin-bottom: 6px;
 }
 
-input {
-  padding: 8px;
+.controls select, .controls input[type=number] {
+  padding: 6px;
   font-size: 16px;
+  height: 38px;
+  flex: 1;
+  min-width: 90px;
+  box-sizing: border-box;
+}
+
+.player {
+  display: grid;
+  grid-template-columns: 7ch 7ch 7ch; /* nom - score - total */
+  gap: 4px; /* espace entre les colonnes */
+  margin-bottom: 4px;
+  align-items: center;
+}
+
+input {
+  padding: 4px;
+  font-size: 16px;
+  box-sizing: border-box;
+  height: 38px;
+}
+
+.name {
+  width: 7ch;
+  color: #000;
+}
+
+.round {
+  width: 7ch;  /* maintenant assez large pour 4 chiffres */
+  text-align: center;
 }
 
 input::placeholder {
-  color: #777;
-  font-style: italic;
+  color: #555;
+  font-style: normal;
 }
 
 .total {
+  width: 7ch;  /* maintenant assez large pour 4 chiffres */
   background: #e0e0e0;
   border-radius: 6px;
   text-align: center;
-  line-height: 40px;
+  line-height: 38px;
   font-weight: bold;
 }
 
@@ -60,31 +80,48 @@ input::placeholder {
   border: 2px solid #4a4a4a;
 }
 
-.main {
+button {
+  padding: 8px;
+  font-size: 16px;
+  margin-top: 4px;
+  height: 38px;
+  cursor: pointer;
+  border: none;
+  border-radius: 6px;
+  width: 100%;
+}
+
+#addRoundBtn {
   background: #4a4a4a;
   color: #fff;
   font-weight: bold;
 }
 
-button {
-  padding: 12px;
-  font-size: 16px;
-  margin-top: 6px;
-  width: 100%;
+#undoBtn, #resetBtn {
+  background: #888;
+  color: #fff;
 }
 
 .history {
   background: #e0e0e0;
-  margin-top: 10px;
-  padding: 8px;
-  max-height: 220px;
+  margin-top: 6px;
+  padding: 6px;
+  max-height: 150px;
   overflow-y: auto;
-  font-size: 14px;
+  font-size: 13px;
   border-radius: 6px;
+}
+
+@media (max-width: 500px) {
+  .player {
+    grid-template-columns: 6ch 6ch 6ch;
+  }
+  .controls {
+    flex-direction: column;
+  }
 }
 </style>
 </head>
-
 <body>
 
 <h1>Pointage</h1>
@@ -103,15 +140,14 @@ button {
     <option value="10">10 joueurs</option>
   </select>
 
-  <input type="number" id="winScore" value="200" min="1"
-    onchange="setWinScore(this.value)">
+  <input type="number" id="winScore" value="200" min="1" onchange="setWinScore(this.value)" title="Score pour gagner">
 </div>
 
 <div id="players"></div>
 
-<button class="main" onclick="addRound()">Nouvelle manche</button>
-<button onclick="undo()">Annuler dernière manche</button>
-<button onclick="reset()">Rejouer</button>
+<button id="addRoundBtn" onclick="addRound()">Nouvelle manche</button>
+<button id="undoBtn" onclick="undo()">Annuler dernière manche</button>
+<button id="resetBtn" onclick="reset()">Rejouer</button>
 
 <div class="history" id="history"></div>
 
@@ -159,10 +195,8 @@ function render() {
 
     div.innerHTML += `
       <div class="player">
-        <input placeholder="Joueur ${i+1}" value="${p.name}"
-          ${locked ? "disabled":""}
-          onchange="rename(${i},this.value)">
-        <input type="number" id="r${i}" placeholder="Manche">
+        <input class="name" placeholder="J${i+1}" value="${p.name}" ${locked ? "disabled":""} onchange="rename(${i},this.value)">
+        <input class="round" type="number" id="r${i}" placeholder="0">
         <div class="total ${leaderClass}">${p.total}</div>
       </div>`;
   }
@@ -177,20 +211,21 @@ function rename(i,v){ players[i].name=v; save(); }
 function addRound() {
   locked = true;
   let line = [];
+
   for (let i = 0; i < count; i++) {
-    let v = Number(document.getElementById("r"+i).value)||0;
+    let v = Number(document.getElementById("r"+i).value) || 0;
     players[i].total += v;
     line.push(v);
-    document.getElementById("r"+i).value="";
+    document.getElementById("r"+i).value = "";
 
     if (players[i].total >= WIN) {
-      if (navigator.vibrate) navigator.vibrate(200);
-      setTimeout(()=>{
+      setTimeout(() => {
         alert(`🏆 ${players[i].name || "Joueur "+(i+1)} gagne avec ${players[i].total} points`);
-      },100);
+      }, 100);
     }
   }
-  history.push("Manche : "+line.join(", "));
+
+  history.push("Manche : " + line.join(", "));
   save();
   render();
 }
@@ -204,8 +239,8 @@ function undo() {
   render();
 }
 
-function reset(force=false) {
-  if (!force && !confirm("Rejouer ?")) return;
+function reset() {
+  if (!confirm("Rejouer ?")) return;
   players.forEach(p=>p.total=0);
   history=[];
   locked=false;
