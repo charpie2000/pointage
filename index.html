@@ -8,43 +8,52 @@
 <style>
 body {
   margin: 0;
-  padding: 10px;
+  padding: 12px;
   font-family: system-ui, -apple-system, Arial, sans-serif;
   background: #b3b3b3;
 }
 
+.app {
+  max-width: 420px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Titre */
 h1 {
-  text-align: center;
-  margin-bottom: 8px;
-  font-size: 1.5em;
+  text-align: left;
+  margin: 0 0 8px 0;
+  font-size: 1.6em;
 }
 
+/* Ligne de contrôle */
 .controls {
-  display: flex;
-  flex-wrap: nowrap;
-  gap: 6px;
+  display: grid;
+  grid-template-columns: 14ch 6ch; /* Nom -> Joueurs, Total -> Score gagnant */
+  gap: 8px;
   margin-bottom: 10px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
-.controls select {
-  flex: 1;
+.controls select,
+.controls input {
+  width: 100%;
   height: 38px;
   font-size: 16px;
-}
-
-#winScore {
-  width: 5.5ch;
-  height: 38px;
-  font-size: 16px;
+  box-sizing: border-box;
   text-align: center;
 }
 
+/* Grille des joueurs */
 .player {
   display: grid;
-  grid-template-columns: 9ch 6ch 6ch;
+  grid-template-columns: 7ch 6ch 6ch; /* Nom - Manche - Total */
   gap: 8px;
   margin-bottom: 6px;
   align-items: center;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 input {
@@ -52,8 +61,21 @@ input {
   font-size: 16px;
   padding: 4px;
   box-sizing: border-box;
+  text-align: center;
 }
 
+/* Supprimer flèches number */
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type=number] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+/* Total */
 .total {
   background: #e0e0e0;
   border-radius: 6px;
@@ -67,27 +89,47 @@ input {
   border: 2px solid #4a4a4a;
 }
 
-button {
-  height: 40px;
-  font-size: 16px;
-  margin-top: 6px;
-  border-radius: 6px;
-  border: none;
+/* Zone boutons alignée sur les colonnes des joueurs */
+.buttons {
+  display: grid;
+  grid-template-columns: 7ch 6ch 6ch; /* Nom - Manche - Total */
+  gap: 8px;
+  margin-top: 8px;
   width: 100%;
+  box-sizing: border-box;
 }
 
+button {
+  width: 100%;
+  height: 38px;
+  font-size: 18px;
+  border-radius: 6px;
+  border: none;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Couleurs des boutons */
 #addRoundBtn {
   background: #4a4a4a;
   color: white;
 }
 
-#undoBtn, #resetBtn {
+#undoBtn {
   background: #888;
   color: white;
 }
 
+#resetBtn {
+  background: #888;
+  color: white;
+}
+
+/* Historique */
 .history {
-  background: #e0e0e0;
+  /*background: #e0e0e0;*/
   margin-top: 8px;
   padding: 6px;
   max-height: 150px;
@@ -100,7 +142,9 @@ button {
 
 <body>
 
-<h1>Pointage</h1>
+<div class="app">
+
+<h1>Carte de Pointage</h1>
 
 <div class="controls">
   <select id="count" onchange="setPlayers(this.value)">
@@ -120,11 +164,15 @@ button {
 
 <div id="players"></div>
 
-<button id="addRoundBtn" onclick="addRound()">Enregistrer le pointage</button>
-<button id="undoBtn" onclick="undo()">Annuler l’enregistrement</button>
-<button id="resetBtn" onclick="reset()">Nouvelle partie</button>
+<div class="buttons">
+  <button id="addRoundBtn" onclick="addRound()">↩</button>
+  <button id="undoBtn" onclick="undo()">✖</button>
+  <button id="resetBtn" onclick="reset()">🔄</button>
+</div>
 
 <div class="history" id="history"></div>
+
+</div>
 
 <script>
 let WIN = 200;
@@ -155,7 +203,7 @@ function render() {
     const p = players[i];
     div.innerHTML += `
       <div class="player">
-        <input placeholder="J${i + 1}" value="${p.name}" 
+        <input placeholder="J${i + 1}" value="${p.name}"
                onchange="players[${i}].name=this.value">
         <input type="number" id="r${i}">
         <div class="total ${p.total === max && max > 0 ? 'leader' : ''}">
@@ -190,7 +238,7 @@ function addRound() {
   }
 
   history.push("Manche : " + line.join(", "));
-  renderHistory();
+  render();
 
   players.slice(0, count).forEach((p, i) => {
     if (!winner && p.total >= WIN) {
@@ -198,11 +246,7 @@ function addRound() {
     }
   });
 
-  render();
-
-  if (winner) {
-    setTimeout(() => alert("🏆 " + winner), 100);
-  }
+  if (winner) setTimeout(() => alert("🏆 " + winner), 100);
 }
 
 function undo() {
@@ -221,7 +265,6 @@ function reset() {
   players.forEach(p => p.total = 0);
   history = [];
   locked = false;
-
   render();
 }
 
