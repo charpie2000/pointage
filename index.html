@@ -14,44 +14,48 @@ body {
 }
 
 .app {
-  max-width: 420px;
+  max-width: 480px;
   width: 100%;
-  box-sizing: border-box;
 }
 
 /* Titre */
 h1 {
-  text-align: left;
-  margin: 0 0 8px 0;
+  margin: 0 0 6px 0;
   font-size: 1.6em;
+  text-align: left;
+}
+
+/* Bannière gagnant */
+#winnerBanner {
+  margin-bottom: 8px;
+  font-weight: bold;
+  font-size: 1em;
 }
 
 /* Ligne de contrôle */
 .controls {
   display: grid;
-  grid-template-columns: 14ch 6ch; /* Nom -> Joueurs, Total -> Score gagnant */
+  grid-template-columns: 14ch 6ch;
   gap: 8px;
   margin-bottom: 10px;
-  width: 100%;
-  box-sizing: border-box;
 }
 
 .controls select,
 .controls input {
-  width: 100%;
   height: 38px;
   font-size: 16px;
-  box-sizing: border-box;
   text-align: center;
+  box-sizing: border-box;
+  padding: 0; /* centre le texte dans le select */
 }
 
-/* Grille des joueurs */
+/* Joueurs */
 .player {
   display: grid;
-  grid-template-columns: 7ch 6ch 6ch; /* Nom - Manche - Total */
+  grid-template-columns: 7ch 6ch 6ch 6ch; /* Nom - Manche - Total - Parties gagnées */
   gap: 8px;
   margin-bottom: 6px;
-  align-items: center;
+  align-items: stretch; 
   width: 100%;
   box-sizing: border-box;
 }
@@ -59,20 +63,17 @@ h1 {
 input {
   height: 38px;
   font-size: 16px;
-  padding: 4px;
-  box-sizing: border-box;
   text-align: center;
+  box-sizing: border-box;
 }
 
 /* Supprimer flèches number */
 input[type=number]::-webkit-inner-spin-button,
 input[type=number]::-webkit-outer-spin-button {
   -webkit-appearance: none;
-  margin: 0;
 }
 input[type=number] {
   appearance: textfield;
-  -moz-appearance: textfield;
 }
 
 /* Total */
@@ -80,71 +81,64 @@ input[type=number] {
   background: #e0e0e0;
   border-radius: 6px;
   font-weight: bold;
-  text-align: center;
-  line-height: 38px;
-}
-
-.leader {
-  background: #9e9e9e !important;
-  border: 2px solid #4a4a4a;
-}
-
-/* Zone boutons alignée sur les colonnes des joueurs */
-.buttons {
-  display: grid;
-  grid-template-columns: 7ch 6ch 6ch; /* Nom - Manche - Total */
-  gap: 8px;
-  margin-top: 8px;
-  width: 100%;
+  display: flex;            
+  align-items: center;
+  justify-content: center;
+  height: 100%;             
   box-sizing: border-box;
 }
 
+.leader {
+  background: #9e9e9e;
+  border: 2px solid #4a4a4a;
+}
+
+/* Parties gagnées */
+.winCount {
+  background: #d0f0d0;
+  border-radius: 6px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+/* Boutons */
+.buttons {
+  display: grid;
+  grid-template-columns: 7ch 6ch 6ch;
+  gap: 8px;
+  margin-top: 8px;
+}
+
 button {
-  width: 100%;
   height: 38px;
   font-size: 18px;
   border-radius: 6px;
   border: none;
-  box-sizing: border-box;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
-/* Couleurs des boutons */
-#addRoundBtn {
-  background: #4a4a4a;
-  color: white;
-}
-
-#undoBtn {
-  background: #888;
-  color: white;
-}
-
-#resetBtn {
-  background: #888;
-  color: white;
-}
+#addRoundBtn { background: #4a4a4a; color: white; }
+#undoBtn, #resetBtn { background: #888; color: white; }
 
 /* Historique */
 .history {
-  /*background: #e0e0e0;*/
   margin-top: 8px;
   padding: 6px;
   max-height: 150px;
   overflow-y: auto;
   font-size: 13px;
-  border-radius: 6px;
 }
 </style>
 </head>
 
 <body>
-
 <div class="app">
 
 <h1>Carte de Pointage</h1>
+<div id="winnerBanner"></div>
 
 <div class="controls">
   <select id="count" onchange="setPlayers(this.value)">
@@ -178,8 +172,10 @@ button {
 let WIN = 200;
 let count = 2;
 let locked = false;
+let gameOver = false;
 
-let players = Array.from({ length: 10 }, () => ({ name: "", total: 0 }));
+// Ajout de la propriété wins
+let players = Array.from({ length: 10 }, () => ({ name: "", total: 0, wins: 0 }));
 let history = [];
 
 document.getElementById("winScore").onchange = e => {
@@ -204,15 +200,17 @@ function render() {
     div.innerHTML += `
       <div class="player">
         <input placeholder="J${i + 1}" value="${p.name}"
-               onchange="players[${i}].name=this.value">
+          onchange="players[${i}].name=this.value">
         <input type="number" id="r${i}">
         <div class="total ${p.total === max && max > 0 ? 'leader' : ''}">
           ${p.total}
         </div>
+        <div class="winCount">
+          ${p.wins}
+        </div>
       </div>
     `;
   }
-
   renderHistory();
 }
 
@@ -225,9 +223,10 @@ function renderHistory() {
 }
 
 function addRound() {
+  if (gameOver) return;
+
   locked = true;
   let line = [];
-  let winner = null;
 
   for (let i = 0; i < count; i++) {
     const input = document.getElementById("r" + i);
@@ -238,33 +237,56 @@ function addRound() {
   }
 
   history.push("Manche : " + line.join(", "));
+
+  // Déterminer les joueurs éligibles
+  const eligible = players
+    .slice(0, count)
+    .map((p, i) => ({ ...p, index: i }))
+    .filter(p => p.total >= WIN);
+
+  if (eligible.length > 0) {
+    const maxScore = Math.max(...eligible.map(p => p.total));
+    const winners = eligible.filter(p => p.total === maxScore);
+
+    // ⚡ Incrémenter les parties gagnées
+    winners.forEach(p => players[p.index].wins++);
+
+    gameOver = true;
+
+    const names = winners.map(p => p.name || `Joueur ${p.index + 1}`);
+    const message =
+      winners.length === 1
+        ? `🏆 ${names[0]} gagne avec ${maxScore} points`
+        : `🤝 Égalité entre ${names.join(" et ")} avec ${maxScore} points`;
+
+    document.getElementById("winnerBanner").textContent = message;
+    setTimeout(() => alert(message), 100);
+  }
+
+  // Re-render pour mettre à jour tous les totals et winCount
   render();
-
-  players.slice(0, count).forEach((p, i) => {
-    if (!winner && p.total >= WIN) {
-      winner = `${p.name || "Joueur " + (i + 1)} gagne avec ${p.total} points`;
-    }
-  });
-
-  if (winner) setTimeout(() => alert("🏆 " + winner), 100);
 }
 
 function undo() {
+  if (gameOver) return;
+
   const last = history.pop();
   if (!last) return;
 
   const values = last.split(":")[1].split(",").map(Number);
   values.forEach((v, i) => players[i].total -= v);
-
   render();
 }
 
 function reset() {
   if (!confirm("Nouvelle partie ?")) return;
 
+  // Garder les parties gagnées jusqu'au rafraîchissement
   players.forEach(p => p.total = 0);
   history = [];
   locked = false;
+  gameOver = false;
+  document.getElementById("winnerBanner").textContent = "";
   render();
 }
 
